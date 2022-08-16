@@ -7,7 +7,7 @@ const tokens = (n) => {
 
 describe('Token', () => {
 
-    let token,accounts,deployer;
+    let token,accounts,deployer,reciever;
 
     beforeEach(async () => {
         //Fetch token from blockchain
@@ -16,6 +16,7 @@ describe('Token', () => {
 
         accounts = await ethers.getSigners();
         deployer = accounts[0];
+        reciever = accounts[1];
     });
 
     describe('Deployments', () => {
@@ -44,4 +45,52 @@ describe('Token', () => {
             expect(await token.balanceOf(deployer.address)).to.equal(totalSupply);
         });
     });
+
+    describe('Sending Token', () => {
+        let amount, transaction, result;
+
+        describe("Success", () => {
+
+            beforeEach(async () => {
+                // Transfer tokens
+                amount = tokens(100)
+                transaction = await token.connect(deployer).transfer(reciever.address, amount);
+                result = await transaction.wait();
+            });
+    
+            it("transfers token balances", async () => {
+                // Log balance before transfer
+                console.log("deployer balance before transfer", await token.balanceOf(deployer.address));
+                console.log("reciever balance before transfer", await token.balanceOf(reciever.address));
+                expect(await token.balanceOf(deployer.address)).to.equal(tokens(999900));
+                expect(await token.balanceOf(reciever.address)).to.equal(amount);
+                //Log balance after transfer
+                console.log("Deployer balance after transfer", await token.balanceOf(deployer.address));
+                console.log("Receiver balance after transfer", await token.balanceOf(reciever.address));
+            });
+    
+            it("emits a transfer event", async () => {
+                const event = result.events[0];
+    
+                expect(event.event).to.equal('Transfer');
+                const args = event.args;
+                expect(args.from).to.equal(deployer.address);
+                expect(args.to).to.equal(reciever.address);
+                expect(args.value).to.equal(amount);
+            });
+        });
+
+        describe("Failure", () => {
+            it("rejects insufficient balances", async () => {
+                //Transfer more tokens than deployer has - 100M
+                const invalidAmount = tokens(100000000);
+                await expect(token.connect(deployer).transfer(reciever.address, invalidAmount)).to.be.reverted;
+            });
+
+            it("rejects invalid recipent", async () => {
+                const amount = tokens(100);
+                await expect(token.connect(deployer).transfer('0x0000000000000000000000000000000000000000', amount)).to.be.reverted;
+            })
+        })
+    })
 });
