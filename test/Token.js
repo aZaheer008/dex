@@ -125,5 +125,47 @@ describe('Token', () => {
                 await expect(token.connect(deployer).approve('0x0000000000000000000000000000000000000000', amount)).to.be.reverted;
             });
         });
-    })
+    });
+
+    describe('Delegated Token Transfers', () => {
+        let amount, transaction, result;
+
+        beforeEach(async () => {
+            amount = tokens(100);
+            transaction = await token.connect(deployer).approve(exchange.address, amount);
+            result = await transaction.wait();
+        });
+
+        describe('Success', () => {
+            beforeEach(async () => {
+                transaction = await token.connect(exchange).transferFrom(deployer.address, reciever.address,amount);
+                result = await transaction.wait();
+            });
+
+            it("Transfers token balances", async () => {
+                expect(await token.balanceOf(deployer.address)).to.be.equal(ethers.utils.parseUnits("999900","ether"));
+                expect(await token.balanceOf(reciever.address)).to.be.equal(amount);
+            });
+
+            it('resets the allowance', async () => {
+                expect(await token.allowance(deployer.address, exchange.address)).to.be.equal(0);
+            });
+
+            it("emits a Transfer event", async () => {
+                const event = result.events[0];
+                expect(event.event).to.equal('Transfer');
+                
+                const args = event.args;
+                expect(args.from).to.equal(deployer.address);
+                expect(args.to).to.equal(reciever.address);
+                expect(args.value).to.equal(amount);
+            });
+        });
+
+        describe('Failure', async () => {
+            //Attempt to transfer too many tokens
+            const  invalidAmount = tokens(100000000); //100 Million, greater than total supply
+            await expect(token.connect(exchange).transferFrom(deployer.address, reciever.address, invalidAmount)).to.be.reverted;
+        })
+    });
 });
