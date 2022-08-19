@@ -8,11 +8,11 @@ import "./Token.sol";
 contract Exchange {
     address public feeAccount;
     uint256 public feePercent;
-    mapping(address => mapping(address => uint256)) public tokens;
-    mapping(uint256 => _Order) public orders;
     uint256 public orderCount;
     mapping(uint256 => bool) public orderCancelled; // true or false (boolean/ bool)
     mapping(uint256 => bool) public orderFilled;
+    mapping(uint256 => _Order) public orders;
+    mapping(address => mapping(address => uint256)) public tokens;
 
     event Deposit(address token, address user, uint256 amount, uint256 balance);
     event Withdraw(address token, address user, uint256 amount, uint256 balance);
@@ -60,12 +60,6 @@ contract Exchange {
 
         // Emit event
         emit Withdraw(_token, msg.sender, _amount, tokens[_token][msg.sender]);
-    }
-
-    //Check Balances
-    function balanceOf(address _token, address _user) public view returns (uint256)  
-    {
-        return tokens[_token][_user];
     }
 
     // Make and Cacnel order
@@ -144,13 +138,7 @@ contract Exchange {
 
     }
 
-    function _trade(
-        uint256 _orderId, 
-        address _user, 
-        address _tokenGet, 
-        uint256 _amountGet, 
-        address _tokenGive, 
-        uint256 _amountGive) internal {
+    function _trade( uint256 _orderId, address _user, address _tokenGet, uint256 _amountGet, address _tokenGive, uint256 _amountGive) internal {
             // Fee is paid by the user who filled the order (msg.sender)
             // Fee is deducted from _amountGet
             uint256 _feeAmount = (_amountGet * feePercent) / 100;
@@ -168,5 +156,10 @@ contract Exchange {
             // Emit trade event
             emit Trade(_orderId, msg.sender, _tokenGet, _amountGet, _tokenGive, _amountGive, _user, block.timestamp);
 
+    }
+
+    //Check Balances
+    function balanceOf(address _token, address _user) public view returns (uint256)  {
+        return tokens[_token][_user];
     }
 }
